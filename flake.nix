@@ -6,10 +6,10 @@
       url = github:kamadorueda/alejandra;
       inputs.nixpkgs.follows = "nixpkgs";
     };
-	crane = {
-		url = "github:ipetkov/crane";
-		inputs.nixpkgs.follows = "nixpkgs";
-	};
+    naersk = {
+      url = github:nix-community/naersk;
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
 	aurae = {
 		url = "github:aurae-runtime/aurae";
 		flake = false;
@@ -18,7 +18,7 @@
   outputs = inputs @ {
     self,
     nixpkgs,
-	crane,
+	naersk,
 	aurae,
     ...
   }:
@@ -28,18 +28,24 @@
     in {
       formatter = std.mapAttrs (system: pkgs: pkgs.default) inputs.alejandra.packages;
 	  overlays = std.genAttrs systems (system: final: prev: let
-	  	cranelib = crane.lib.${system};
-		vendorDir = src: cranelib.vendorCargoDeps { cargoLock = "${aurae}/Cargo.lock"; inherit src; };
+	  	nlib = naersk.lib.${system};
+		# vendorDir = src: cranelib.vendorCargoDeps { cargoLock = "${aurae}/Cargo.lock"; inherit src; };
 	  in {
-	  	auraed = cranelib.buildPackage {
-			src = cranelib.cleanCargoSource "${aurae}/auraed";
-			cargoVendorDir = vendorDir "${aurae}/auraed";
+	  	auraed = nlib.buildPackage {
+			pname = "auraed";
+			src = aurae;
+			targets = [ "aurae" ];
+			cargoBuildOptions = base: base ++ [ "-p" "auraed" ];
 			nativeBuildInputs = with final; [ pkgconf ];
 			buildInputs = with final; [ protobuf libseccomp dbus ];
 		};
-		auraescript = cranelib.buildPackage {
-			src = cranelib.cleanCargoSource "${aurae}/auraescript";
-			cargoVendorDir = vendorDir "${aurae}/auraescript";
+		auraescript = nlib.buildPackage {
+			pname = "auraescript";
+			src = aurae;
+			targets = [ "auraescript" ];
+			cargoBuildOptions = base: base ++ [ "-p" "auraescript" ];
+			nativeBuildInputs = with final; [ pkgconf ];
+			buildInputs = with final; [ protobuf libseccomp dbus ];
 		};
 	  });
 	  packages = mapAttrs (system: overlay: let
